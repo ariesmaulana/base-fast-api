@@ -15,7 +15,7 @@ def get_db_pool() -> ConnectionPool:
     global pool
     if pool is None:
         pool = ConnectionPool(
-            conninfo=settings.DATABASE_URL,
+            conninfo=f"{settings.DATABASE_URL}?options=-c%20search_path%3Dpublic",
             min_size=1,
             max_size=10,
             kwargs={"row_factory": dict_row},

@@ -154,3 +154,6 @@ cython_debug/
 # AI related
 rules.md
 GEMINI.MD
+
+# development files
+logs/

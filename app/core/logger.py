@@ -1,6 +1,8 @@
 import logging
 import json
 import sys
+import os
+from datetime import datetime
 
 
 class AppLogger:
@@ -11,10 +13,19 @@ class AppLogger:
 
         # Ensure handlers are not duplicated if logger is retrieved multiple times
         if not self.logger.handlers:
-            handler = logging.StreamHandler(sys.stdout)
-            formatter = logging.Formatter(
-                '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "message": %(message)s}'
-            )
+            if os.getenv("ENV") == "production":
+                # Production: Stream logs to external system (e.g., Grafana)
+                handler = logging.StreamHandler(sys.stdout)  # Replace with Grafana integration
+                formatter = logging.Formatter(
+                    '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "message": %(message)s}'
+                )
+            else:
+                # Development: Log to JSON files in the logs directory with date-based filenames
+                current_date = datetime.now().strftime("%Y-%m-%d")
+                handler = logging.FileHandler(f"logs/{current_date}_development_logs.json")
+                formatter = logging.Formatter(
+                    '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "message": %(message)s}'
+                )
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
             self.logger.propagate = False
