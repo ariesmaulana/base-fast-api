@@ -2,6 +2,7 @@ import os
 from contextlib import contextmanager
 from psycopg_pool import ConnectionPool
 from psycopg.rows import dict_row
+from . import settings
 
 # Global connection pool
 pool: ConnectionPool = None
@@ -13,10 +14,7 @@ def get_db_pool() -> ConnectionPool:
     global pool
     if pool is None:
         pool = ConnectionPool(
-            conninfo=os.getenv(
-                "DATABASE_URL", 
-                "postgresql://postgres:localdb123@localhost/fast_db"
-            ),
+            conninfo=settings.DATABASE_URL,
             min_size=1,
             max_size=10,
             kwargs={"row_factory": dict_row},

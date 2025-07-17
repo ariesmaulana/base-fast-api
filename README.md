@@ -2,6 +2,40 @@
 
 This is a base project for a FastAPI application with user authentication.
 
+## Project Structure
+
+The project is structured as follows:
+
+```
+/
+├── app/
+│   ├── __init__.py
+│   ├── main.py                 # FastAPI app entry point
+│   ├── database.py             # Database connection setup
+│   ├── users/
+│   │   ├── __init__.py
+│   │   ├── models.py           # Pydantic models
+│   │   ├── routers.py          # API Endpoint/handler
+│   │   ├── services.py         # Service or main business logic
+│   │   └── storage.py          # Raw query
+│   ├── dependencies/
+│   │   └── auth.py             # FastAPI dependencies for authentication
+│   └── middleware/
+│       └── logging.py          # Logging middleware
+├── schema/
+│   └── 001_create_users.sql    # Database schema files
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py             # Test configuration
+│   ├── test_services.py        # Service layer tests
+│   └── test_storage.py         # Storage layer tests
+├── .gitignore
+├── pyproject.toml
+├─��� pytest.ini
+├── README.md
+└── uv.lock
+```
+
 ## Setup
 
 1.  Install dependencies:
@@ -24,7 +58,7 @@ This is a base project for a FastAPI application with user authentication.
 
 ### Authentication
 
-*   `POST /auth/register`: Register a new user.
+*   `POST /register`: Register a new user.
     *   **Request Body:**
         ```json
         {
@@ -33,7 +67,7 @@ This is a base project for a FastAPI application with user authentication.
           "password": "yourpassword"
         }
         ```
-*   `POST /auth/login`: Log in to get an access token.
+*   `POST /login`: Log in to get an access token.
     *   **Request Body (form-data):**
         *   `username`: Your email
         *   `password`: Your password
@@ -41,6 +75,7 @@ This is a base project for a FastAPI application with user authentication.
 ### Users
 
 *   `GET /users/`: Get a list of users.
+*   `GET /users/me`: Get the current logged-in user.
 
 ## Testing
 
