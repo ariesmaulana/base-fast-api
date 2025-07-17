@@ -13,4 +13,5 @@ dependencies = [
     "python-multipart==0.0.20",
     "pytest-xdist==3.8.0",
     "pyjwt>=2.10.1",
+    "ruff==0.6.5",
 ]

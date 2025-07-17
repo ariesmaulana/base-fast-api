@@ -4,16 +4,24 @@ from app.users.models import UserCreate
 from jwt import decode
 from app import settings
 from fastapi.testclient import TestClient
+from app.core.logger import AppLogger
+from app.dependencies.logger import get_app_logger
+
 
 def test_create_user_service(db_conn: Connection):
     """
     Test the user creation service to ensure it hashes passwords
     and returns a proper User model.
     """
-    user_to_create = UserCreate(username="service_user", email="service@example.com", password="plain_password")
-    
-    created_user = user_service.create_user(db_conn, user_to_create)
-    
+    user_to_create = UserCreate(
+        username="service_user", email="service@example.com", password="plain_password"
+    )
+
+    logger = get_app_logger("test.service.create_user")
+    created_user = user_service.create_user(
+        db_conn, user_to_create, "dummy_trace_id", logger
+    )
+
     assert created_user is not None
     assert created_user.email == user_to_create.email
     assert not hasattr(created_user, "password")
@@ -21,26 +29,38 @@ def test_create_user_service(db_conn: Connection):
 
     # Verify password was hashed in the DB
     from app.users import storage as user_storage
-    db_user = user_storage.get_user_by_email(db_conn, user_to_create.email)
+
+    db_user = user_storage.get_user_by_email(
+        db_conn, user_to_create.email, "dummy_trace_id", logger
+    )
     assert db_user is not None
     assert db_user.hashed_password != "plain_password"
     assert user_service.pwd_context.verify("plain_password", db_user.hashed_password)
+
 
 def test_authenticate_user_service(db_conn: Connection):
     """
     Test the user authentication service.
     """
-    user_to_create = UserCreate(username="auth_user", email="auth@example.com", password="correct_password")
-    user_service.create_user(db_conn, user_to_create)
-    
+    user_to_create = UserCreate(
+        username="auth_user", email="auth@example.com", password="correct_password"
+    )
+    logger = get_app_logger("test.service.authenticate_user")
+    user_service.create_user(db_conn, user_to_create, "dummy_trace_id", logger)
+
     # Test successful authentication
-    authenticated_user = user_service.authenticate_user(db_conn, user_to_create.email, "correct_password")
+    authenticated_user = user_service.authenticate_user(
+        db_conn, user_to_create.email, "correct_password", "dummy_trace_id", logger
+    )
     assert authenticated_user is not None
     assert authenticated_user.email == user_to_create.email
-    
+
     # Test failed authentication (wrong password)
-    unauthenticated_user = user_service.authenticate_user(db_conn, user_to_create.email, "wrong_password")
+    unauthenticated_user = user_service.authenticate_user(
+        db_conn, user_to_create.email, "wrong_password", "dummy_trace_id", logger
+    )
     assert unauthenticated_user is None
+
 
 def test_create_access_token_service():
     """
@@ -48,7 +68,7 @@ def test_create_access_token_service():
     """
     email = "test@example.com"
     token = user_service.create_access_token(data={"sub": email})
-    
+
     assert token is not None
     decoded_token = decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
     assert decoded_token["sub"] == email

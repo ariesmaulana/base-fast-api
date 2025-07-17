@@ -3,7 +3,13 @@ import json
 from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
 import time
+import logging
+import json
+from fastapi import Request
+from starlette.middleware.base import BaseHTTPMiddleware
+import time
 import sys
+from .trace_id import get_trace_id
 
 # Configure logger to output JSON
 log_formatter = logging.Formatter(
@@ -20,6 +26,7 @@ logger.propagate = False
 
 SENSITIVE_KEYS = ["password", "email"]
 
+
 def sanitize_body(body: bytes) -> dict:
     """
     Sanitizes sensitive keys from a request or response body.
@@ -27,7 +34,7 @@ def sanitize_body(body: bytes) -> dict:
     try:
         if not body:
             return {}
-        
+
         data = json.loads(body)
         if not isinstance(data, dict):
             return data
@@ -46,19 +53,21 @@ def sanitize_body(body: bytes) -> dict:
 class LoggingMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         start_time = time.time()
-        
+
         request_body_bytes = await request.body()
-        
+
         # To allow the request body to be read again by the endpoint
         async def receive():
             return {"type": "http.request", "body": request_body_bytes}
+
         request = Request(request.scope, receive)
 
         response = await call_next(request)
-        
+
         process_time = time.time() - start_time
-        
+
         log_dict = {
+            "trace_id": get_trace_id(),
             "request": {
                 "method": request.method,
                 "path": request.url.path,
@@ -69,7 +78,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             },
             "process_time_seconds": round(process_time, 4),
         }
-        
+
         logger.info(json.dumps(log_dict))
-        
+
         return response

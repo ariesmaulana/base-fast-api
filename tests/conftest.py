@@ -19,14 +19,14 @@ from app.database import get_db_dependency
 from psycopg.rows import dict_row
 import time
 
+
 @pytest.fixture(scope="module")
 def db_pool() -> Generator[ConnectionPool, None, None]:
     """
     Session-scoped fixture to create and share a database pool.
     """
     database_url = os.getenv(
-        "TEST_DATABASE_URL",
-        "postgresql://postgres:localdb123@localhost/test_db_1"
+        "TEST_DATABASE_URL", "postgresql://postgres:localdb123@localhost/test_db_1"
     )
 
     pool = ConnectionPool(
@@ -34,7 +34,7 @@ def db_pool() -> Generator[ConnectionPool, None, None]:
         min_size=1,
         max_size=20,
         kwargs={"row_factory": dict_row},
-        open=True,  
+        open=True,
     )
 
     yield pool
@@ -56,9 +56,9 @@ def db_conn(db_pool: ConnectionPool) -> Generator[Connection, None, None]:
         schema_path = Path("schema")
         sql_files = sorted(glob.glob(str(schema_path / "*.sql")))
         for sql_file in sql_files:
-            with open(sql_file, 'r', encoding='utf-8') as f:
+            with open(sql_file, "r", encoding="utf-8") as f:
                 conn.execute(f.read())
-                
+
         conn.commit()
 
         try:

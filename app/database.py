@@ -7,6 +7,7 @@ from . import settings
 # Global connection pool
 pool: ConnectionPool = None
 
+
 def get_db_pool() -> ConnectionPool:
     """
     Returns the global connection pool, creating it if necessary.
@@ -22,12 +23,14 @@ def get_db_pool() -> ConnectionPool:
         )
     return pool
 
+
 def set_db_pool(db_pool: ConnectionPool):
     """
     Sets the global connection pool. Used for testing.
     """
     global pool
     pool = db_pool
+
 
 @contextmanager
 def get_db_connection_context():
@@ -38,6 +41,7 @@ def get_db_connection_context():
     db_pool = get_db_pool()
     with db_pool.connection() as conn:
         yield conn
+
 
 def get_db_dependency():
     """

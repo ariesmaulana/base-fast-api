@@ -2,8 +2,7 @@ import os
 
 # Database settings
 DATABASE_URL = os.getenv(
-    "DATABASE_URL", 
-    "postgresql://postgres:localdb123@localhost/fast_db"
+    "DATABASE_URL", "postgresql://postgres:localdb123@localhost/fast_db"
 )
 
 # JWT settings
