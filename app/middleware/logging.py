@@ -24,7 +24,7 @@ logger.setLevel(logging.INFO)
 logger.propagate = False
 
 
-SENSITIVE_KEYS = ["password", "email"]
+SENSITIVE_KEYS = ["password", "email","current_password", "new_password", "confirm_password"]
 
 
 def sanitize_body(body: bytes) -> dict:
