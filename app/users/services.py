@@ -41,7 +41,7 @@ def create_user(
 ) -> User:
     logger.info({"trace_id": trace_id, "email": user.email})
     hashed_password = pwd_context.hash(user.password)
-    with conn.transaction():  # ✅ transaksi dikendalikan di sini
+    with conn.transaction():
         db_user = user_storage.create_user(
             conn, user, hashed_password, trace_id, logger
         )

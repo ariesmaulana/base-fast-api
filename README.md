@@ -1,6 +1,6 @@
 # Base FastAPI Project
 
-This is a base project for a FastAPI application with user authentication.
+This is a base project for a FastAPI application, currently only have feature user authentication.
 
 ## Project Structure
 
@@ -37,16 +37,22 @@ The project is structured as follows:
 │   └── test_routers.py         # Router/Handler integration tests
 ├── .gitignore
 ├── pyproject.toml
-├─��� pytest.ini
+├── pytest.ini
 ├── README.md
 └── uv.lock
 ```
+
+# Install
+
+1. Clone this repo
+
+2. Install uv package manager
 
 ## Setup
 
 1.  Install dependencies:
     ```bash
-    uv install
+    uv sync
     ```
 
 2.  Set up the database URL environment variable. For local development, you can use:
@@ -61,16 +67,20 @@ The project is structured as follows:
     TEST_DATABASE_URL="postgresql://postgres:localdb123@localhost/test_db_1"
     ```
 
-3.  Run the application:
+3. Run the test:
+   ```
+   uv run pytest
+   ```
+4.  Run the application:
     ```bash
-    uvicorn app.main:app --reload
+    uv run uvicorn app.main:app --reload
     ```
 
 ## Centralized Logging
 
 This project uses a centralized logging utility (`app/core/logger.py`) and FastAPI's dependency injection system (`app/dependencies/logger.py`) to ensure consistent log formatting and easier debugging. The `AppLogger` class provides a simplified interface for logging messages with a predefined structure, including the `path` of the log origin.
 
-Example usage in service/storage layer functions (injected via FastAPI Depends):
+Example usage in service/storage layer functions:
 ```python
 from fastapi import Depends
 from ..core.logger import AppLogger
@@ -84,16 +94,18 @@ def my_service_function(logger: AppLogger = Depends(get_service_logger)):
     logger.info({"key": "value"})
 
 # For storage layer
-def get_storage_logger(logger: AppLogger = Depends(lambda: get_app_logger("storage"))):
-    return logger
+def get_users(conn: Connection, trace_id: str, logger: AppLogger) -> List[Dict[str, Any]]:
+    logger.info({"trace_id": trace_id})
+    with conn.cursor() as cur:
+        cur.execute("SELECT id, username, email FROM users;")
+        return cur.fetchall()
 
-def my_storage_function(logger: AppLogger = Depends(get_storage_logger)):
-    logger.info({"another_key": "another_value"})
+# Storage layer functions now use the logger passed from the service layer instead of re-initializing it.
 ```
 
 This will produce a log entry similar to:
 ```json
-{"timestamp": "...", "level": "INFO", "message": "{"path": "service.my_function", "key": "value", "another_key": "another_value"}"}
+{"timestamp": "...", "level": "INFO", "message": "{"path": "service.my_function", "key": "value"}"}
 ```
 
 ## API Endpoints
@@ -158,3 +170,10 @@ uv run pytest
 ### Integration Tests
 
 Integration tests (`tests/test_routers.py`) verify the end-to-end flow through the API endpoints, including middleware, service, and storage interactions. These tests ensure that the `trace_id` is correctly handled in requests, responses, and error details.
+
+### TODO
+- Refactor Trace and Logger
+- Add more basic functionality:
+    - CRUD users
+    - Authorization
+- Dockerize

@@ -10,12 +10,8 @@ from ..dependencies.logger import get_app_logger
 from fastapi import Depends
 
 
-def get_storage_logger(logger: AppLogger = Depends(lambda: get_app_logger("storage"))):
-    return logger
-
-
 def get_users(
-    conn: Connection, trace_id: str, logger: AppLogger = Depends(get_storage_logger)
+    conn: Connection, trace_id: str, logger: AppLogger
 ) -> List[Dict[str, Any]]:
     logger.info({"trace_id": trace_id})
     with conn.cursor() as cur:
@@ -29,7 +25,7 @@ def get_user_by_email(
     conn: Connection,
     email: str,
     trace_id: str,
-    logger: AppLogger = Depends(get_storage_logger),
+    logger: AppLogger,
 ) -> Optional[UserInDB]:
     logger.info({"trace_id": trace_id, "email": email})
     with conn.cursor() as cur:
@@ -48,7 +44,7 @@ def create_user(
     user: UserCreate,
     hashed_password: str,
     trace_id: str,
-    logger: AppLogger = Depends(get_storage_logger),
+    logger: AppLogger,
 ) -> UserInDB:
     logger.info({"trace_id": trace_id, "email": user.email})
     with conn.cursor() as cur:
