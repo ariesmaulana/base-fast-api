@@ -4,7 +4,6 @@ from psycopg import Connection
 from psycopg_pool import ConnectionPool
 from app.users import storage as user_storage, common
 from app.users.models import UserCreate
-from app.core.logger import AppLogger
 from app.dependencies.logger import get_app_logger
 
 
@@ -108,9 +107,7 @@ def test_update_password(db_conn: Connection):
     """
     Test updating a user's password in the storage layer.
     """
-    user_id = 1
-    hashed_password = "new_hashed_password"
-    logger = get_app_logger("test.storage.update_password")
+    logger = get_app_logger("test.storage.update_passwords")
 
     # 1. Create user
     user_to_create = UserCreate(
@@ -125,7 +122,6 @@ def test_update_password(db_conn: Connection):
         db_conn, user_to_create, hashed_password, "dummy_trace_id", logger
     )
     user_id = created_user.id
-    logger.info(f"Created user ID: {user_id}")
     db_conn.commit()  # Ensure user is visible to other connections
 
     # Assume user exists
@@ -172,12 +168,10 @@ def test_lock_user_blocks_other_transaction(
         db_conn, user_to_create, hashed_password, "dummy_trace_id", logger
     )
     user_id = created_user.id
-    logger.info(f"Created user ID: {user_id}")
     db_conn.commit()  # Ensure user is visible to other connections
 
     # Extract schema name to use in both transactions
     schema_name = db_conn.execute("SHOW search_path").fetchone()["search_path"]
-    logger.info(f"Using schema: {schema_name}")
 
     # Use these to coordinate between threads
     lock_acquired = threading.Event()
@@ -189,21 +183,12 @@ def test_lock_user_blocks_other_transaction(
         try:
             with db_pool.connection() as conn1:
                 conn1.execute(f"SET search_path TO {schema_name}")
-                with conn1.transaction():
-                    user_row = conn1.execute(
-                        "SELECT * FROM users WHERE id = %s FOR UPDATE", (user_id,)
-                    ).fetchone()
-                    if user_row:
-                        print(f"First txn: Got lock on user {user_id}")
-                        result["first_txn_success"] = True
-                        lock_acquired.set()
-                        second_txn_started.wait(timeout=2)
-                        time.sleep(3)
-                        print("First txn: Releasing lock")
-                    else:
-                        result["first_txn_error"] = (
-                            f"Could not find user with ID {user_id}"
-                        )
+                lock_a = user_storage.lock_user(conn1, user_id, "dummy_trace_id", logger)
+                if lock_a is not None:
+                    result["first_txn_success"] = True
+                    lock_acquired.set()
+                    second_txn_started.wait(timeout=2)
+                    time.sleep(3)
         except Exception as e:
             result["first_txn_error"] = str(e)
 
@@ -218,26 +203,16 @@ def test_lock_user_blocks_other_transaction(
             second_txn_started.set()
             with db_pool.connection() as conn2:
                 conn2.execute(f"SET search_path TO {schema_name}")
-                print("Second txn: Attempting to acquire lock...")
                 t0 = time.time()
                 try:
-                    conn2.execute("SET statement_timeout = '5000'")
-                    user_row = conn2.execute(
-                        "SELECT * FROM users WHERE id = %s FOR UPDATE", (user_id,)
-                    ).fetchone()
-                    if user_row:
-                        print(f"Second txn: Acquired lock after waiting")
+                    lock_b = user_storage.lock_user(conn2, user_id, "dummy_trace_id", logger)
+                    if lock_b is not None:
                         result["second_txn_success"] = True
-                    else:
-                        result["second_txn_error"] = (
-                            f"Could not find user with ID {user_id}"
-                        )
                 except Exception as e:
                     result["second_txn_error"] = str(e)
                 finally:
                     t1 = time.time()
                     result["delay"] = t1 - t0
-                    print(f"Second txn delay: {result['delay']:.2f} seconds")
         except Exception as e:
             result["connection_error"] = str(e)
 

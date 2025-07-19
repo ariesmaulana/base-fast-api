@@ -157,3 +157,6 @@ GEMINI.MD
 
 # development files
 logs/
+
+# IDE Jetbrains
+.idea
