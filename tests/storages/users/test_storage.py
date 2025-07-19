@@ -125,7 +125,7 @@ def test_update_password(db_conn: Connection):
         db_conn, user_to_create, hashed_password, "dummy_trace_id", logger
     )
     user_id = created_user.id
-    print(f"Created user ID: {user_id}")
+    logger.info(f"Created user ID: {user_id}")
     db_conn.commit()  # Ensure user is visible to other connections
 
     # Assume user exists
