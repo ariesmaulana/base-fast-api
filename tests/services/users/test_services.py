@@ -177,7 +177,8 @@ def test_get_user_by_id_service(db_conn: Connection):
         password="password",
     )
     logger = get_app_logger("test.service.get_user_by_email")
-    new_user = user_service.create_user(db_conn, user_to_create, "dummy_trace_id", logger)
+    new_user, err = user_service.create_user(db_conn, user_to_create, "dummy_trace_id", logger)
+    assert err is None
 
     # Test found
     found_user, err = user_service.get_user_by_id(
