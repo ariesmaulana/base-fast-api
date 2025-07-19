@@ -169,7 +169,7 @@ def test_update_password_service(db_conn: Connection):
 
 def test_get_user_by_id_service(db_conn: Connection):
     """
-    Test the get user by email service.
+    Test the get user by ID service.
     """
     user_to_create = UserCreate(
         username="get_user_service",
