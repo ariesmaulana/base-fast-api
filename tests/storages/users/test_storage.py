@@ -30,7 +30,7 @@ def test_create_user(db_conn: Connection):
 
 def test_create_user_duplicate(db_conn: Connection):
     """
-    Test creating a user directly in the storage layer.
+    Test handling duplicate user creation in the storage layer.
     """
     user_to_create = UserCreate(
         username="storage_user", email="storage@example.com", password="password"
