@@ -172,12 +172,12 @@ def test_lock_user_blocks_other_transaction(
         db_conn, user_to_create, hashed_password, "dummy_trace_id", logger
     )
     user_id = created_user.id
-    print(f"Created user ID: {user_id}")
+    logger.info(f"Created user ID: {user_id}")
     db_conn.commit()  # Ensure user is visible to other connections
 
     # Extract schema name to use in both transactions
     schema_name = db_conn.execute("SHOW search_path").fetchone()["search_path"]
-    print(f"Using schema: {schema_name}")
+    logger.info(f"Using schema: {schema_name}")
 
     # Use these to coordinate between threads
     lock_acquired = threading.Event()
