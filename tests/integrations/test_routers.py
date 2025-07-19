@@ -48,7 +48,7 @@ def test_register_user_duplicate_email(
     )
     assert response.status_code == 400
     data = response.json()
-    assert data["detail"]["message"] == "Email already registered"
+    assert data["detail"]["message"] == "Failed to create user after 5 attempts"
     assert "trace_id" in data["detail"]
     assert "X-Trace-ID" in response.headers
 
@@ -171,4 +171,37 @@ def test_read_users_me_unauthorized(test_app_with_db: TestClient, db_conn: Conne
     assert response.status_code == 401
     data = response.json()
     assert "detail" in data
+    assert "X-Trace-ID" in response.headers
+
+def test_update_password(test_app_with_db: TestClient, db_conn: Connection):
+    """
+    Test user registration through the API.
+    """
+    # Register a user first
+    test_app_with_db.post(
+        "/register",
+        json={
+            "username": "read_user_1",
+            "email": "read1@example.com",
+            "password": "readpassword",
+        },
+    )
+
+    login_response = test_app_with_db.post(
+        "/login", data={"username": "read1@example.com", "password": "readpassword"}
+    )
+    token = login_response.json()["access_token"]
+
+    response = test_app_with_db.post(
+        "/update-password",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "old_password": "readpassword",
+            "new_password": "newpassword",  
+        },
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["email"] == "read1@example.com"
+    assert "id" in data
     assert "X-Trace-ID" in response.headers

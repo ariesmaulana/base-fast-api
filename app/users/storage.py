@@ -3,22 +3,17 @@ This module contains the database operations for users.
 """
 
 from psycopg import Connection
-from typing import List, Dict, Any, Optional
+from typing import List, Optional
 from .models import UserCreate, UserInDB
 from ..core.logger import AppLogger
-from ..dependencies.logger import get_app_logger
-from fastapi import Depends
 
 
-def get_users(
-    conn: Connection, trace_id: str, logger: AppLogger
-) -> List[Dict[str, Any]]:
+def get_users(conn: Connection, trace_id: str, logger: AppLogger) -> List[UserInDB]:
     logger.info({"trace_id": trace_id})
     with conn.cursor() as cur:
-        cur.execute("SELECT id, username, email FROM users;")
-        return (
-            cur.fetchall()
-        )  # result: list[dict] karena row_factory sudah diset global
+        cur.execute("SELECT id, username, email, code, hashed_password FROM users;")
+        rows = cur.fetchall()
+        return [UserInDB(**row) for row in rows]
 
 
 def get_user_by_email(
@@ -30,8 +25,25 @@ def get_user_by_email(
     logger.info({"trace_id": trace_id, "email": email})
     with conn.cursor() as cur:
         cur.execute(
-            "SELECT id, username, email, hashed_password FROM users WHERE email = %s;",
+            "SELECT id, username, email, code, hashed_password FROM users WHERE email = %s;",
             (email,),
+        )
+        row = cur.fetchone()
+        if row:
+            return UserInDB(**row)
+        return None
+
+def get_user_by_id(
+    conn: Connection,
+    user_id: int,
+    trace_id: str,
+    logger: AppLogger,
+) -> Optional[UserInDB]:
+    logger.info({"trace_id": trace_id, "user_id": user_id})
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id, username, email, code, hashed_password FROM users WHERE id = %s;",
+            (user_id,),
         )
         row = cur.fetchone()
         if row:
@@ -50,11 +62,50 @@ def create_user(
     with conn.cursor() as cur:
         cur.execute(
             """
-            INSERT INTO users (username, email, hashed_password)
-            VALUES (%s, %s, %s)
-            RETURNING id, username, email, hashed_password;
+            INSERT INTO users (username, email, code, hashed_password)
+            VALUES (%s, %s, %s, %s)
+            RETURNING id, username, email, code, hashed_password;
             """,
-            (user.username, user.email, hashed_password),
+            (user.username, user.email, user.code, hashed_password),
         )
         row = cur.fetchone()
         return UserInDB(**row)
+
+
+def update_password(
+    conn: Connection,
+    user_id: int,
+    hashed_password: str,
+    trace_id: str,
+    logger: AppLogger,
+) -> bool:
+    logger.info({"trace_id": trace_id, "user_id": user_id})
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE users SET hashed_password = %s WHERE id = %s;",
+            (hashed_password, user_id),
+        )
+        if cur.rowcount == 0:
+            logger.warning(
+                {"trace_id": trace_id, "user_id": user_id, "message": "User not found"}
+            )
+            return False
+        return True
+
+
+def lock_user(
+    conn: Connection,
+    user_id: int,
+    trace_id: str,
+    logger: AppLogger,
+) -> Optional[UserInDB]:
+    logger.info({"trace_id": trace_id, "id": user_id})
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id, username, email, code, hashed_password FROM users WHERE id = %s FOR UPDATE;",
+            (user_id,),
+        )
+        row = cur.fetchone()
+        if row:
+            return UserInDB(**row)
+        return None

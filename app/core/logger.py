@@ -15,14 +15,18 @@ class AppLogger:
         if not self.logger.handlers:
             if os.getenv("ENV") == "production":
                 # Production: Stream logs to external system (e.g., Grafana)
-                handler = logging.StreamHandler(sys.stdout)  # Replace with Grafana integration
+                handler = logging.StreamHandler(
+                    sys.stdout
+                )  # Replace with Grafana integration
                 formatter = logging.Formatter(
                     '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "message": %(message)s}'
                 )
             else:
                 # Development: Log to JSON files in the logs directory with date-based filenames
                 current_date = datetime.now().strftime("%Y-%m-%d")
-                handler = logging.FileHandler(f"logs/{current_date}_development_logs.json")
+                handler = logging.FileHandler(
+                    f"logs/{current_date}_development_logs.json"
+                )
                 formatter = logging.Formatter(
                     '{"timestamp": "%(asctime)s", "level": "%(levelname)s", "message": %(message)s}'
                 )
@@ -33,6 +37,14 @@ class AppLogger:
     def info(self, message: dict):
         log_message = {"path": self.path, **message}
         self.logger.info(json.dumps(log_message))
+
+    def error(self, message: dict):
+        log_message = {"path": self.path, **message}
+        self.logger.error(json.dumps(log_message))
+
+    def warning(self, message: dict):
+        log_message = {"path": self.path, **message}
+        self.logger.warning(json.dumps(log_message))
 
 
 def get_logger(path: str):

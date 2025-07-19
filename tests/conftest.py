@@ -31,7 +31,7 @@ def db_pool() -> Generator[ConnectionPool, None, None]:
 
     pool = ConnectionPool(
         conninfo=database_url,
-        min_size=1,
+        min_size=3,
         max_size=20,
         kwargs={"row_factory": dict_row},
         open=True,

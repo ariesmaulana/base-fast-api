@@ -8,6 +8,7 @@ class UserBase(BaseModel):
 
     username: str
     email: str
+    code: str = None  # Optional, will be generated if not provided
 
 
 class UserCreate(UserBase):
@@ -16,6 +17,16 @@ class UserCreate(UserBase):
     """
 
     password: str
+
+
+class UserUpdatePassword(BaseModel):
+    """
+    Model for updating user password.
+    """
+
+    user_id: int = None
+    old_password: str
+    new_password: str
 
 
 class User(UserBase):
