@@ -139,7 +139,7 @@ def test_get_user_by_email_service(db_conn: Connection):
         db_conn, "nonexistent@example.com", "dummy_trace_id", logger
     )
     assert isinstance(err, ValueError)
-    assert str(err) == 'User not found'
+    assert str(err) == "User not found"
     assert not_found_user is None
 
 
@@ -167,6 +167,7 @@ def test_update_password_service(db_conn: Connection):
     assert result is True
     assert err is None
 
+
 def test_get_user_by_id_service(db_conn: Connection):
     """
     Test the get user by ID service.
@@ -177,13 +178,13 @@ def test_get_user_by_id_service(db_conn: Connection):
         password="password",
     )
     logger = get_app_logger("test.service.get_user_by_email")
-    new_user, err = user_service.create_user(db_conn, user_to_create, "dummy_trace_id", logger)
+    new_user, err = user_service.create_user(
+        db_conn, user_to_create, "dummy_trace_id", logger
+    )
     assert err is None
 
     # Test found
-    found_user, err = user_service.get_user_by_id(
-        db_conn, 1, "dummy_trace_id", logger
-    )
+    found_user, err = user_service.get_user_by_id(db_conn, 1, "dummy_trace_id", logger)
     assert err is None
     assert found_user is not None
     assert found_user.email == user_to_create.email
@@ -193,5 +194,5 @@ def test_get_user_by_id_service(db_conn: Connection):
         db_conn, 99, "dummy_trace_id", logger
     )
     assert isinstance(err, ValueError)
-    assert str(err) == 'User not found'
+    assert str(err) == "User not found"
     assert not_found_user is None

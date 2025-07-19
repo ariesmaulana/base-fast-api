@@ -173,6 +173,7 @@ def test_read_users_me_unauthorized(test_app_with_db: TestClient, db_conn: Conne
     assert "detail" in data
     assert "X-Trace-ID" in response.headers
 
+
 def test_update_password(test_app_with_db: TestClient, db_conn: Connection):
     """
     Test user registration through the API.
@@ -197,7 +198,7 @@ def test_update_password(test_app_with_db: TestClient, db_conn: Connection):
         headers={"Authorization": f"Bearer {token}"},
         json={
             "old_password": "readpassword",
-            "new_password": "newpassword",  
+            "new_password": "newpassword",
         },
     )
     assert response.status_code == 200

@@ -86,7 +86,10 @@ def read_users_me(current_user: User = Depends(get_current_user)):
     """
     return current_user
 
-@auth_router.post("/update-password", response_model=User, status_code=status.HTTP_200_OK)
+
+@auth_router.post(
+    "/update-password", response_model=User, status_code=status.HTTP_200_OK
+)
 def update_password(
     user: UserUpdatePassword,
     conn: Connection = Depends(get_db_dependency),
@@ -97,7 +100,9 @@ def update_password(
     Update user password.
     """
     trace_id = get_trace_id()
-    _, err = services.update_password(conn, current_user.id, user.old_password, user.new_password, trace_id, logger)
+    _, err = services.update_password(
+        conn, current_user.id, user.old_password, user.new_password, trace_id, logger
+    )
     if err:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

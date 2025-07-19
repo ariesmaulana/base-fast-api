@@ -167,6 +167,7 @@ def update_password(
         else:
             return False, ValueError("Failed to update password")
 
+
 def get_user_by_id(
     conn: Connection,
     user_id: int,

@@ -183,7 +183,9 @@ def test_lock_user_blocks_other_transaction(
         try:
             with db_pool.connection() as conn1:
                 conn1.execute(f"SET search_path TO {schema_name}")
-                lock_a = user_storage.lock_user(conn1, user_id, "dummy_trace_id", logger)
+                lock_a = user_storage.lock_user(
+                    conn1, user_id, "dummy_trace_id", logger
+                )
                 if lock_a is not None:
                     result["first_txn_success"] = True
                     lock_acquired.set()
@@ -205,7 +207,9 @@ def test_lock_user_blocks_other_transaction(
                 conn2.execute(f"SET search_path TO {schema_name}")
                 t0 = time.time()
                 try:
-                    lock_b = user_storage.lock_user(conn2, user_id, "dummy_trace_id", logger)
+                    lock_b = user_storage.lock_user(
+                        conn2, user_id, "dummy_trace_id", logger
+                    )
                     if lock_b is not None:
                         result["second_txn_success"] = True
                 except Exception as e:

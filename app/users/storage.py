@@ -33,6 +33,7 @@ def get_user_by_email(
             return UserInDB(**row)
         return None
 
+
 def get_user_by_id(
     conn: Connection,
     user_id: int,
