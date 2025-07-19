@@ -1,0 +1,57 @@
+name: Base Fast Workflow
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: localdb123
+          POSTGRES_DB: test_db_1
+        options: >-
+          --health-cmd "pg_isready -U postgres -d test_db_1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:localdb123@localhost:5432/base_fast
+      TEST_DATABASE_URL: postgresql://postgres:localdb123@localhost:5432/test_db_1
+      ENV: development
+      SECRET_KEY: somthing-that-already-secret
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.13
+
+      - name: Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies with uv
+        run: uv sync
+
+      - name: Run ruff format check
+        run: uv run ruff format
+
+      - name: Run tests
+        run: uv run pytest -n auto

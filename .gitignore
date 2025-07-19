@@ -155,8 +155,6 @@ cython_debug/
 rules.md
 GEMINI.MD
 
-# development files
-logs/
 
 # IDE Jetbrains
 .idea

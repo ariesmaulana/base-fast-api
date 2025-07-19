@@ -2,6 +2,7 @@ import logging
 import json
 import sys
 import os
+import sys
 from datetime import datetime
 
 
@@ -11,9 +12,12 @@ class AppLogger:
         self.logger = logging.getLogger(path)
         self.logger.setLevel(logging.INFO)
 
+        is_testing = "pytest" in sys.modules
+        is_production = os.getenv("ENV") == "production"
+
         # Ensure handlers are not duplicated if logger is retrieved multiple times
         if not self.logger.handlers:
-            if os.getenv("ENV") == "production":
+            if is_production or is_testing:
                 # Production: Stream logs to external system (e.g., Grafana)
                 handler = logging.StreamHandler(
                     sys.stdout
