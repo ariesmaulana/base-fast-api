@@ -6,7 +6,6 @@ Each test runs in its own PostgreSQL schema to ensure full isolation.
 
 import glob
 import os
-import time
 import uuid
 from pathlib import Path
 from typing import Generator

@@ -3,6 +3,7 @@ import time
 from datetime import timedelta
 from typing import List
 
+import jwt
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.security import OAuth2PasswordRequestForm
 from psycopg import Connection
@@ -16,7 +17,7 @@ from ..dependencies.auth import get_current_user
 from ..dependencies.logger import get_app_logger
 from ..middleware.trace_id import get_trace_id
 from . import services
-from .models import User, UserCreate, UserUpdatePassword
+from .models import Token, User, UserCreate, UserUpdatePassword
 
 auth_router = APIRouter(tags=["auth"])
 users_router = APIRouter(prefix="/users", tags=["users"])
@@ -66,6 +67,52 @@ def login_for_access_token(
             detail={"message": "Incorrect username or password", "trace_id": trace_id},
             headers={"WWW-Authenticate": "Bearer"},
         )
+    access_token_expires = timedelta(minutes=services.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = services.create_access_token(
+        data={"sub": user.email}, expires_delta=access_token_expires
+    )
+    refresh_token_expires = timedelta(minutes=services.REFRESH_TOKEN_EXPIRE_MINUTES)
+    refresh_token = services.create_refresh_token(
+        data={"sub": user.email}, expires_delta=refresh_token_expires
+    )
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "refresh_token": refresh_token,
+    }
+
+
+@auth_router.post("/refresh")
+def refresh_access_token(
+    token: Token,
+    conn: Connection = Depends(get_db_dependency),
+    logger: AppLogger = Depends(lambda: get_app_logger("router.refresh_access_token")),
+):
+    """
+    Refresh the access token.
+    """
+    trace_id = get_trace_id()
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail={"message": "Could not validate credentials", "trace_id": trace_id},
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(
+            token.refresh_token,
+            settings.SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+        )
+        if payload.get("type") != "refresh":
+            raise credentials_exception
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+    except jwt.PyJWTError:
+        raise credentials_exception
+    user, err = services.get_user_by_email(conn, email, trace_id, logger)
+    if err:
+        raise credentials_exception
     access_token_expires = timedelta(minutes=services.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = services.create_access_token(
         data={"sub": user.email}, expires_delta=access_token_expires

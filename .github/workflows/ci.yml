@@ -32,6 +32,7 @@ jobs:
       SECRET_KEY: somthing-that-already-secret
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 45
+      REFRESH_TOKEN_EXPIRE_MINUTES: 700
       R2_ENDPOINT_URL: r2-url
       R2_ACCESS_KEY_ID: xxxxx
       R2_SECRET_ACCESS_KEY: xxxx

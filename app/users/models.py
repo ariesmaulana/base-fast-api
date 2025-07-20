@@ -46,3 +46,7 @@ class UserInDB(User):
     """
 
     hashed_password: str
+
+
+class Token(BaseModel):
+    refresh_token: str
