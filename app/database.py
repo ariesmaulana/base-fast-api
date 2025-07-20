@@ -1,8 +1,10 @@
 import os
 from contextlib import contextmanager
-from psycopg_pool import ConnectionPool
+
 from psycopg.rows import dict_row
-from . import settings
+from psycopg_pool import ConnectionPool
+
+from app.settings import settings
 
 # Global connection pool
 pool: ConnectionPool = None

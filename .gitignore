@@ -154,6 +154,7 @@ cython_debug/
 # AI related
 rules.md
 GEMINI.MD
+copilot-instructions.md
 
 
 # IDE Jetbrains

@@ -1,13 +1,15 @@
-from psycopg.errors import UniqueViolation
 from unittest.mock import patch
-from psycopg import Connection
-from app.users import services as user_service
-from app.users.models import UserCreate, UserInDB
-from jwt import decode
-from app import settings
+
 from fastapi.testclient import TestClient
+from jwt import decode
+from psycopg import Connection
+from psycopg.errors import UniqueViolation
+
 from app.core.logger import AppLogger
 from app.dependencies.logger import get_app_logger
+from app.settings import settings
+from app.users import services as user_service
+from app.users.models import UserCreate, UserInDB
 
 
 def test_create_user_service(db_conn: Connection):
@@ -89,19 +91,24 @@ def test_create_user_with_retry(db_conn: Connection):
     logger = get_app_logger("test.service.retry")
 
     # Mock the storage layer to simulate database errors
-    with patch("app.users.storage.create_user") as mock_create_user:
+    with patch("app.users.storage.create_user") as mock_create_user, patch(
+        "app.users.storage.get_user_by_id"
+    ) as mock_get_user_by_id:
         # Simulate failure on the first 2 attempts, then success
         mock_create_user.side_effect = [
             UniqueViolation("DB error 1"),
             UniqueViolation("DB error 2"),
-            UserInDB(
-                id=1,
-                username=user_to_create.username,
-                email=user_to_create.email,
-                code="testcode",
-                hashed_password="hashed_password",
-            ),
+            1,  # Simulate successful creation on the third attempt
         ]
+
+        mock_get_user_by_id.return_value = UserInDB(
+            id=1,
+            username=user_to_create.username,
+            email=user_to_create.email,
+            code="testcode",
+            hashed_password="hashed_password",
+            avatar_url="",
+        )
 
         created_user, err = user_service.create_user(
             db_conn, user_to_create, "dummy_trace_id", logger
@@ -109,6 +116,7 @@ def test_create_user_with_retry(db_conn: Connection):
 
         # Assert that the service retried 3 times
         assert mock_create_user.call_count == 3
+        assert mock_get_user_by_id.call_count == 1
         assert err is None
         assert created_user is not None
         assert created_user.email == user_to_create.email
@@ -196,3 +204,46 @@ def test_get_user_by_id_service(db_conn: Connection):
     assert isinstance(err, ValueError)
     assert str(err) == "User not found"
     assert not_found_user is None
+
+
+def test_update_avatar_url_service(db_conn: Connection):
+    """
+    Test the update avatar url service.
+    """
+    user_to_create = UserCreate(
+        username="avatar_user",
+        email="avatar_user@example.com",
+        password="password",
+    )
+    logger = get_app_logger("test.service.update_avatar_url")
+    # Create user
+    created_user, err = user_service.create_user(
+        db_conn, user_to_create, "dummy_trace_id", logger
+    )
+    assert err is None
+    assert created_user is not None
+
+    # Update avatar url
+    avatar_url = "https://example.com/avatar.png"
+    result, err = user_service.update_avatar_url(
+        db_conn, created_user.id, avatar_url, "dummy_trace_id", logger
+    )
+    assert result is True
+    assert err is None
+
+    # Verify avatar url updated in DB
+    from app.users import storage as user_storage
+
+    db_user = user_storage.get_user_by_id(
+        db_conn, created_user.id, "dummy_trace_id", logger
+    )
+    assert db_user is not None
+    assert db_user.avatar_url == avatar_url
+
+    # Test not found
+    result, err = user_service.update_avatar_url(
+        db_conn, 999999, avatar_url, "dummy_trace_id", logger
+    )
+    assert result is False
+    assert isinstance(err, ValueError)
+    assert str(err) == "User not found"

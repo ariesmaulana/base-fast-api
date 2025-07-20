@@ -1,50 +1,46 @@
 import threading
 import time
+
 from psycopg import Connection
 from psycopg_pool import ConnectionPool
-from app.users import storage as user_storage, common
-from app.users.models import UserCreate
+
 from app.dependencies.logger import get_app_logger
+from app.users import common
+from app.users import storage as user_storage
+from app.users.models import UserCreate, UserInDB
 
 
-def test_create_user(db_conn: Connection):
+def test_create_user_and_get_user_by_id(db_conn: Connection):
     """
     Test creating a user directly in the storage layer.
     """
-    user_to_create = UserCreate(
-        username="storage_user", email="storage@example.com", password="password"
-    )
-    user_to_create.code = common.generate_user_code()
-    hashed_password = "a_very_hashed_password"
+
     logger = get_app_logger("test.storage.create_user")
-    created_user = user_storage.create_user(
-        db_conn, user_to_create, hashed_password, "dummy_trace_id", logger
-    )
-
-    assert created_user is not None
-    assert created_user.email == user_to_create.email
-    assert created_user.username == user_to_create.username
-    assert created_user.hashed_password == hashed_password
-
-
-def test_create_user_duplicate(db_conn: Connection):
-    """
-    Test handling duplicate user creation in the storage layer.
-    """
     user_to_create = UserCreate(
         username="storage_user", email="storage@example.com", password="password"
     )
+
     user_to_create.code = common.generate_user_code()
     hashed_password = "a_very_hashed_password"
-    logger = get_app_logger("test.storage.create_user_duplicate")
-    created_user = user_storage.create_user(
+    created_user_id = user_storage.create_user(
         db_conn, user_to_create, hashed_password, "dummy_trace_id", logger
     )
 
-    assert created_user is not None
-    assert created_user.email == user_to_create.email
-    assert created_user.username == user_to_create.username
-    assert created_user.hashed_password == hashed_password
+    expected_user = UserInDB(
+        id=created_user_id,
+        username=user_to_create.username,
+        email=user_to_create.email,
+        code=user_to_create.code,
+        hashed_password=hashed_password,
+        avatar_url=None,
+    )
+
+    retrieved_user = user_storage.get_user_by_id(
+        db_conn, created_user_id, "dummy_trace_id", logger
+    )
+
+    assert created_user_id != 0
+    assert retrieved_user == expected_user
 
 
 def test_get_user_by_email(db_conn: Connection):
@@ -118,15 +114,14 @@ def test_update_password(db_conn: Connection):
     user_to_create.code = common.generate_user_code()
     hashed_password = "a_very_hashed_password"
 
-    created_user = user_storage.create_user(
+    created_user_id = user_storage.create_user(
         db_conn, user_to_create, hashed_password, "dummy_trace_id", logger
     )
-    user_id = created_user.id
     db_conn.commit()  # Ensure user is visible to other connections
 
     # Assume user exists
     success = user_storage.update_password(
-        db_conn, user_id, hashed_password, "dummy_trace_id", logger
+        db_conn, created_user_id, hashed_password, "dummy_trace_id", logger
     )
 
     assert success is True
@@ -164,10 +159,10 @@ def test_lock_user_blocks_other_transaction(
     user_to_create.code = common.generate_user_code()
     hashed_password = "a_very_hashed_password"
 
-    created_user = user_storage.create_user(
+    created_user_id = user_storage.create_user(
         db_conn, user_to_create, hashed_password, "dummy_trace_id", logger
     )
-    user_id = created_user.id
+    user_id = created_user_id
     db_conn.commit()  # Ensure user is visible to other connections
 
     # Extract schema name to use in both transactions
@@ -240,3 +235,39 @@ def test_lock_user_blocks_other_transaction(
         result["delay"] >= min_delay
     ), f"Expected locking delay of at least {min_delay}s, got {result['delay']:.2f} seconds"
     print(f"Test completed. Lock delay: {result['delay']:.2f}s")
+
+
+def test_update_avatar_url(db_conn: Connection):
+    """
+    Test updating a user's avatar URL in the storage layer.
+    """
+    user_to_create = UserCreate(
+        username="storage_user", email="storage@example.com", password="password"
+    )
+    user_to_create.code = common.generate_user_code()
+    hashed_password = "a_very_hashed_password"
+
+    logger = get_app_logger("test.storage.update_avatar_url")
+    created_user_id = user_storage.create_user(
+        db_conn, user_to_create, hashed_password, "dummy_trace_id", logger
+    )
+
+    update_avatar = user_storage.update_avatar_url(
+        db_conn, created_user_id, "avatar.jpg", "dummy_trace_id", logger
+    )
+
+    expected_user = UserInDB(
+        id=created_user_id,
+        username=user_to_create.username,
+        email=user_to_create.email,
+        code=user_to_create.code,
+        hashed_password=hashed_password,
+        avatar_url="avatar.jpg",
+    )
+
+    retrieved_user = user_storage.get_user_by_id(
+        db_conn, created_user_id, "dummy_trace_id", logger
+    )
+
+    assert update_avatar is True
+    assert retrieved_user == expected_user

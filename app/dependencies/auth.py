@@ -1,14 +1,16 @@
-from psycopg import Connection
+import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-import jwt
 from jwt.exceptions import InvalidTokenError
-from ..database import get_db_dependency
-from ..users import storage as user_storage
-from .. import settings
-from ..users.models import User
-from ..middleware.trace_id import get_trace_id
+from psycopg import Connection
+
+from app.settings import settings
+
 from ..core.logger import AppLogger
+from ..database import get_db_dependency
+from ..middleware.trace_id import get_trace_id
+from ..users import storage as user_storage
+from ..users.models import User
 from .logger import get_app_logger
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")

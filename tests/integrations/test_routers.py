@@ -1,3 +1,6 @@
+import io
+from unittest.mock import MagicMock, patch
+
 from fastapi.testclient import TestClient
 from psycopg import Connection
 
@@ -206,3 +209,45 @@ def test_update_password(test_app_with_db: TestClient, db_conn: Connection):
     assert data["email"] == "read1@example.com"
     assert "id" in data
     assert "X-Trace-ID" in response.headers
+
+
+def test_upload_avatar(test_app_with_db: TestClient, db_conn: Connection):
+    """
+    Test uploading a user avatar.
+    """
+    # Register a user first
+    test_app_with_db.post(
+        "/register",
+        json={
+            "username": "avatar_user",
+            "email": "avatar@example.com",
+            "password": "avatarpassword",
+        },
+    )
+
+    # Login to get access token
+    login_response = test_app_with_db.post(
+        "/login", data={"username": "avatar@example.com", "password": "avatarpassword"}
+    )
+    token = login_response.json()["access_token"]
+
+    # Create a mock file for upload
+    file_content = b"fake image content"
+    file = io.BytesIO(file_content)
+
+    # Mock the R2 storage client
+    with patch(
+        "app.users.routers.upload_file_to_r2", return_value="avatar/user123.jpg"
+    ) as mock_upload:
+        response = test_app_with_db.post(
+            "/users/me/avatar",
+            headers={"Authorization": f"Bearer {token}"},
+            files={"file": ("avatar.jpg", file, "image/jpeg")},
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["avatar_url"] is not None
+        assert "avatar/user" in data["avatar_url"]
+        assert "X-Trace-ID" in response.headers
+        mock_upload.assert_called_once()

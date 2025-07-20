@@ -1,22 +1,19 @@
-import os
-from psycopg import Connection
-from typing import List, Dict, Any, Optional, Union, Tuple
 from datetime import datetime, timedelta, timezone
-from jwt import encode, decode
-from jwt.exceptions import InvalidTokenError
-from psycopg.errors import UniqueViolation
-from passlib.context import CryptContext
+from typing import List, Optional, Tuple, Union
 
-from .models import UserCreate, User, UserUpdatePassword
-from . import common
-from . import storage as user_storage
-from .. import settings
+from fastapi import Depends
+from jwt import encode
+from passlib.context import CryptContext
+from psycopg import Connection
+from psycopg.errors import UniqueViolation
+
+from app.settings import settings
+
 from ..core.logger import AppLogger
 from ..dependencies.logger import get_app_logger
-
-
-from ..dependencies.logger import get_app_logger
-from fastapi import Depends
+from . import common
+from . import storage as user_storage
+from .models import User, UserCreate
 
 
 def get_service_logger(
@@ -26,7 +23,7 @@ def get_service_logger(
 
 
 # Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
 
@@ -58,10 +55,13 @@ def create_user(
         try:
             user.code = common.generate_user_code()
             with conn.transaction():
-                db_user = user_storage.create_user(
+                db_user_id = user_storage.create_user(
                     conn, user, hashed_password, trace_id, logger
                 )
-            return User(**db_user.model_dump()), None
+                user_created = user_storage.get_user_by_id(
+                    conn, db_user_id, trace_id, logger
+                )
+            return User(**user_created.model_dump()), None
         except (Exception, UniqueViolation) as e:
             if isinstance(e, UniqueViolation):
                 retry_count += 1
@@ -179,3 +179,28 @@ def get_user_by_id(
     if not db_user:
         return None, ValueError("User not found")
     return User(**db_user.model_dump()), None
+
+
+def update_avatar_url(
+    conn: Connection,
+    user_id: int,
+    avatar_url: str,
+    trace_id: str,
+    logger: AppLogger = Depends(get_service_logger),
+) -> Union[bool, Tuple[bool, ValueError]]:
+    logger.info({"trace_id": trace_id, "user_id": user_id})
+    with conn.transaction():
+        userLock = user_storage.lock_user(conn, user_id, trace_id, logger)
+        if userLock is None:
+            logger.warning(
+                {"trace_id": trace_id, "user_id": user_id, "message": "User not found"}
+            )
+            return False, ValueError("User not found")
+
+        success = user_storage.update_avatar_url(
+            conn, user_id, avatar_url, trace_id, logger
+        )
+        if success:
+            return True, None
+        else:
+            return False, ValueError("Failed to upload avatar URL")

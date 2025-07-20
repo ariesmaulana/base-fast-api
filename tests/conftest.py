@@ -4,20 +4,21 @@ conftest.py - Schema-per-test isolation for FastAPI
 Each test runs in its own PostgreSQL schema to ensure full isolation.
 """
 
-import os
 import glob
+import os
+import time
 import uuid
 from pathlib import Path
 from typing import Generator
-import pytest
-from psycopg import Connection
-from psycopg_pool import ConnectionPool
-from fastapi.testclient import TestClient
 
-from app.main import app
-from app.database import get_db_dependency
+import pytest
+from fastapi.testclient import TestClient
+from psycopg import Connection
 from psycopg.rows import dict_row
-import time
+from psycopg_pool import ConnectionPool
+
+from app.database import get_db_dependency
+from app.main import app
 
 
 @pytest.fixture(scope="module")
