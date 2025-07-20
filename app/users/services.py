@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional, Tuple, Union
+import secrets
 
 from fastapi import Depends
 from jwt import encode
@@ -25,6 +26,7 @@ def get_service_logger(
 # Password hashing context
 pwd_context = CryptContext(schemes=["pbkdf2_sha256"], deprecated="auto")
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
+REFRESH_TOKEN_EXPIRE_MINUTES = settings.REFRESH_TOKEN_EXPIRE_MINUTES
 
 
 def get_users(
@@ -78,7 +80,7 @@ def create_user(
                 logger.error(
                     {
                         "trace_id": trace_id,
-                        "context": f"Unexpected error during user creation, ",
+                        "context": "Unexpected error during user creation, ",
                         "error": str(e),
                     }
                 )
@@ -120,12 +122,23 @@ def authenticate_user(
     return User(**db_user.model_dump()), None
 
 
+import secrets
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + (
         expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    to_encode.update({"exp": expire})
+    to_encode.update({"exp": expire, "type": "access", "nonce": secrets.token_hex(8)})
+    return encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None):
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + (
+        expires_delta or timedelta(minutes=settings.REFRESH_TOKEN_EXPIRE_MINUTES)
+    )
+    to_encode.update({"exp": expire, "type": "refresh", "nonce": secrets.token_hex(8)})
     return encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
 

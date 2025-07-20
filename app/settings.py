@@ -27,7 +27,12 @@ class Settings(BaseSettings):
     TEST_DATABASE_URL: str = Field(..., validation_alias="TEST_DATABASE_URL")
     SECRET_KEY: str = Field(..., validation_alias="SECRET_KEY")
     ALGORITHM: str = Field(..., validation_alias="ALGORITHM")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(..., validation_alias="ACCESS_TOKEN_EXPIRE_MINUTES")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
+        ..., validation_alias="ACCESS_TOKEN_EXPIRE_MINUTES"
+    )
+    REFRESH_TOKEN_EXPIRE_MINUTES: int = Field(
+        10080, validation_alias="REFRESH_TOKEN_EXPIRE_MINUTES"
+    )
     ENV: str = Field(..., validation_alias="ENV")
     R2_ENDPOINT_URL: str = Field(..., validation_alias="R2_ENDPOINT_URL")
     R2_ACCESS_KEY_ID: str = Field(..., validation_alias="R2_ACCESS_KEY_ID")
@@ -37,7 +42,7 @@ class Settings(BaseSettings):
     R2_REGION: str = Field(..., validation_alias="R2_REGION")
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", json_schema_extra="ignore"
+        env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
 

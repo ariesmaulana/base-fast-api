@@ -127,6 +127,14 @@ This will produce a log entry similar to:
         *   `username`: Your email
         *   `password`: Your password
     *   **Error Responses:** Include a `trace_id` for debugging.
+*   `POST /refresh`: Refresh an access token.
+    *   **Request Body:**
+        ```json
+        {
+          "refresh_token": "your_refresh_token"
+        }
+        ```
+    *   **Error Responses:** Include a `trace_id` for debugging.
 
 ### Trace ID Middleware
 

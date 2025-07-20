@@ -3,8 +3,6 @@ from contextvars import ContextVar
 
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
-from starlette.responses import Response
-from starlette.types import ASGIApp
 
 trace_id_var: ContextVar[str] = ContextVar("trace_id", default="")
 

@@ -1,4 +1,3 @@
-import os
 from contextlib import contextmanager
 
 from psycopg.rows import dict_row

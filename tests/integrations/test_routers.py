@@ -1,5 +1,5 @@
 import io
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from psycopg import Connection
@@ -251,3 +251,82 @@ def test_upload_avatar(test_app_with_db: TestClient, db_conn: Connection):
         assert "avatar/user" in data["avatar_url"]
         assert "X-Trace-ID" in response.headers
         mock_upload.assert_called_once()
+
+
+def test_upload_avatar_no_bucket(test_app_with_db: TestClient, db_conn: Connection):
+    """
+    Test avatar upload when R2_BUCKET_NAME is not set.
+    """
+    # Register a user first
+    test_app_with_db.post(
+        "/register",
+        json={
+            "username": "no_bucket_user",
+            "email": "nobucket@example.com",
+            "password": "nobucketpassword",
+        },
+    )
+
+    # Login to get access token
+    login_response = test_app_with_db.post(
+        "/login",
+        data={"username": "nobucket@example.com", "password": "nobucketpassword"},
+    )
+    token = login_response.json()["access_token"]
+
+    # Create a mock file for upload
+    file_content = b"fake image content"
+    file = io.BytesIO(file_content)
+
+    # Mock settings to simulate no bucket name
+    with patch("app.users.routers.settings.R2_BUCKET_NAME", new=None):
+        response = test_app_with_db.post(
+            "/users/me/avatar",
+            headers={"Authorization": f"Bearer {token}"},
+            files={"file": ("avatar.jpg", file, "image/jpeg")},
+        )
+
+        assert response.status_code == 500
+        data = response.json()
+        assert (
+            data["detail"]["message"]
+            == "R2_BUCKET_NAME environment variable is not set"
+        )
+        assert "trace_id" in data["detail"]
+        assert "X-Trace-ID" in response.headers
+
+
+def test_refresh_access_token(test_app_with_db: TestClient, db_conn: Connection):
+    """
+    Test refreshing the access token.
+    """
+    # Register a user first
+    test_app_with_db.post(
+        "/register",
+        json={
+            "username": "refresh_user",
+            "email": "refresh@example.com",
+            "password": "refreshpassword",
+        },
+    )
+
+    # Login to get tokens
+    login_response = test_app_with_db.post(
+        "/login",
+        data={"username": "refresh@example.com", "password": "refreshpassword"},
+    )
+    login_data = login_response.json()
+    refresh_token = login_data["refresh_token"]
+    old_access_token = login_data["access_token"]
+
+    # Refresh the access token
+    response = test_app_with_db.post(
+        "/refresh",
+        json={"refresh_token": refresh_token},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert "token_type" in data
+    assert data["access_token"] != old_access_token
+    assert "X-Trace-ID" in response.headers

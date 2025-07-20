@@ -1,11 +1,9 @@
 from unittest.mock import patch
 
-from fastapi.testclient import TestClient
 from jwt import decode
 from psycopg import Connection
 from psycopg.errors import UniqueViolation
 
-from app.core.logger import AppLogger
 from app.dependencies.logger import get_app_logger
 from app.settings import settings
 from app.users import services as user_service
