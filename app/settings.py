@@ -21,24 +21,23 @@ class Settings(BaseSettings):
         R2_BUCKET_NAME (str): Cloudflare R2 bucket name.
         R2_PUBLIC_BASE_URL (str): Cloudflare R2 public base URL.
         R2_REGION (str): Cloudflare R2 region.
-        GEMINI_API_KEY (str): Gemini API key.
     """
 
-    DATABASE_URL: str = Field(..., env="DATABASE_URL")
-    TEST_DATABASE_URL: str = Field(..., env="TEST_DATABASE_URL")
-    SECRET_KEY: str = Field(..., env="SECRET_KEY")
-    ALGORITHM: str = Field(..., env="ALGORITHM")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(..., env="ACCESS_TOKEN_EXPIRE_MINUTES")
-    ENV: str = Field(..., env="ENV")
-    R2_ENDPOINT_URL: str = Field(..., env="R2_ENDPOINT_URL")
-    R2_ACCESS_KEY_ID: str = Field(..., env="R2_ACCESS_KEY_ID")
-    R2_SECRET_ACCESS_KEY: str = Field(..., env="R2_SECRET_ACCESS_KEY")
-    R2_BUCKET_NAME: str = Field(..., env="R2_BUCKET_NAME")
-    R2_PUBLIC_BASE_URL: str = Field(..., env="R2_PUBLIC_BASE_URL")
-    R2_REGION: str = Field(..., env="R2_REGION")
+    DATABASE_URL: str = Field(..., validation_alias="DATABASE_URL")
+    TEST_DATABASE_URL: str = Field(..., validation_alias="TEST_DATABASE_URL")
+    SECRET_KEY: str = Field(..., validation_alias="SECRET_KEY")
+    ALGORITHM: str = Field(..., validation_alias="ALGORITHM")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(..., validation_alias="ACCESS_TOKEN_EXPIRE_MINUTES")
+    ENV: str = Field(..., validation_alias="ENV")
+    R2_ENDPOINT_URL: str = Field(..., validation_alias="R2_ENDPOINT_URL")
+    R2_ACCESS_KEY_ID: str = Field(..., validation_alias="R2_ACCESS_KEY_ID")
+    R2_SECRET_ACCESS_KEY: str = Field(..., validation_alias="R2_SECRET_ACCESS_KEY")
+    R2_BUCKET_NAME: str = Field(..., validation_alias="R2_BUCKET_NAME")
+    R2_PUBLIC_BASE_URL: str = Field(..., validation_alias="R2_PUBLIC_BASE_URL")
+    R2_REGION: str = Field(..., validation_alias="R2_REGION")
 
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=".env", env_file_encoding="utf-8", json_schema_extra="ignore"
     )
 
 
