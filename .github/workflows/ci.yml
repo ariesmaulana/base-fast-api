@@ -32,6 +32,14 @@ jobs:
       SECRET_KEY: somthing-that-already-secret
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 45
+      R2_ENDPOINT_URL: r2-url
+      R2_ACCESS_KEY_ID: xxxxx
+      R2_SECRET_ACCESS_KEY: xxxx
+      R2_BUCKET_NAME: bucketname
+      R2_PUBLIC_BASE_URL: base_url
+      R2_REGION: auto
+
+
 
     steps:
       - name: Checkout code
