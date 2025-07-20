@@ -1,9 +1,10 @@
-import logging
 import json
-import sys
+import logging
 import os
 import sys
 from datetime import datetime
+
+from app.settings import settings
 
 
 class AppLogger:
@@ -13,7 +14,7 @@ class AppLogger:
         self.logger.setLevel(logging.INFO)
 
         is_testing = "pytest" in sys.modules
-        is_production = os.getenv("ENV") == "production"
+        is_production = settings.ENV == "production"
 
         # Ensure handlers are not duplicated if logger is retrieved multiple times
         if not self.logger.handlers:

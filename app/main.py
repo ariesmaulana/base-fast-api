@@ -1,7 +1,8 @@
 from fastapi import FastAPI
-from app.users.routers import users_router, auth_router
+
 from app.middleware.logging import LoggingMiddleware
 from app.middleware.trace_id import TraceIdMiddleware
+from app.users.routers import auth_router, users_router
 
 app = FastAPI()
 

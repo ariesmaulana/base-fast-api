@@ -1,3 +1,5 @@
+from typing import Optional
+
 from pydantic import BaseModel
 
 
@@ -9,6 +11,7 @@ class UserBase(BaseModel):
     username: str
     email: str
     code: str = None  # Optional, will be generated if not provided
+    avatar_url: Optional[str] = None  # Optional, will be generated if not provided
 
 
 class UserCreate(UserBase):

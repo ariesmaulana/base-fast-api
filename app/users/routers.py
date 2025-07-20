@@ -1,16 +1,22 @@
-from psycopg import Connection
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
-from .models import User, UserCreate, UserUpdatePassword
-from . import services
-from ..database import get_db_dependency
-from . import storage
+import asyncio
+import time
 from datetime import timedelta
 from typing import List
-from ..dependencies.auth import get_current_user
-from ..middleware.trace_id import get_trace_id
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi.security import OAuth2PasswordRequestForm
+from psycopg import Connection
+
+from app.settings import settings
+
 from ..core.logger import AppLogger
+from ..core.r2_storage import upload_file_to_r2
+from ..database import get_db_dependency
+from ..dependencies.auth import get_current_user
 from ..dependencies.logger import get_app_logger
+from ..middleware.trace_id import get_trace_id
+from . import services
+from .models import User, UserCreate, UserUpdatePassword
 
 auth_router = APIRouter(tags=["auth"])
 users_router = APIRouter(prefix="/users", tags=["users"])
@@ -110,6 +116,55 @@ def update_password(
         )
     user, err = services.get_user_by_id(conn, current_user.id, trace_id, logger)
     if err is not None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={"message": "User not found", "trace_id": trace_id},
+        )
+    return user
+
+
+@users_router.post("/me/avatar", response_model=User)
+async def upload_avatar(
+    file: UploadFile = File(...),
+    conn: Connection = Depends(get_db_dependency),
+    current_user: User = Depends(get_current_user),
+    logger: AppLogger = Depends(lambda: get_app_logger("router.upload_avatar")),
+):
+    """
+    Upload a new avatar for the current user. Handles file upload to R2 and updates avatar_url.
+    """
+    trace_id = get_trace_id()
+    ext = file.filename.split(".")[-1] if "." in file.filename else ""
+    filename = f"avatars/user_{current_user.id}_{int(time.time())}.{ext}"
+    # Ensure file.file is at the beginning
+    file.file.seek(0)
+    # Ensure bucket is set, raise clear error if not
+    bucket = settings.R2_BUCKET_NAME
+    if not bucket:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "message": "R2_BUCKET_NAME environment variable is not set",
+                "trace_id": trace_id,
+            },
+        )
+    loop = asyncio.get_running_loop()
+    public_url = await loop.run_in_executor(
+        None,
+        lambda: upload_file_to_r2(
+            file.file, filename, bucket=bucket, content_type=file.content_type
+        ),
+    )
+    success, err = services.update_avatar_url(
+        conn, current_user.id, public_url, trace_id, logger
+    )
+    if err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"message": str(err), "trace_id": trace_id},
+        )
+    user, err = services.get_user_by_id(conn, current_user.id, trace_id, logger)
+    if err:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail={"message": "User not found", "trace_id": trace_id},

@@ -1,14 +1,12 @@
-import logging
 import json
-from fastapi import Request
-from starlette.middleware.base import BaseHTTPMiddleware
-import time
 import logging
-import json
-from fastapi import Request
-from starlette.middleware.base import BaseHTTPMiddleware
-import time
 import sys
+import time
+from typing import Any, Dict
+
+from fastapi import Request
+from starlette.middleware.base import BaseHTTPMiddleware
+
 from .trace_id import get_trace_id
 
 # Configure logger to output JSON
@@ -33,26 +31,60 @@ SENSITIVE_KEYS = [
 ]
 
 
-def sanitize_body(body: bytes) -> dict:
+def sanitize_body(request: Request, body: bytes) -> Dict[str, Any]:
     """
     Sanitizes sensitive keys from a request or response body.
-    """
-    try:
-        if not body:
-            return {}
 
+    Args:
+        request: The original request object
+        body: Raw request body bytes
+
+    Returns:
+        Dictionary with sanitized values
+    """
+    if not body:
+        return {}
+
+    # Check content type
+    content_type = request.headers.get("content-type", "")
+
+    # Handle multipart form data
+    if "multipart/form-data" in content_type:
+        return {"detail": "Multipart form data, not logged"}
+
+    # Handle application/x-www-form-urlencoded
+    if "application/x-www-form-urlencoded" in content_type:
+        try:
+            form_data = body.decode("utf-8")
+            if "=" in form_data:
+                parts = form_data.split("&")
+                form_dict = {}
+                for part in parts:
+                    if "=" in part:
+                        key, value = part.split("=", 1)
+                        if key.lower() in SENSITIVE_KEYS:
+                            form_dict[key] = "[REDACTED]"
+                        else:
+                            form_dict[key] = value
+                return {"form_data": form_dict}
+        except UnicodeDecodeError:
+            return {"detail": "Invalid form data encoding, not logged"}
+
+    # Try to parse as JSON
+    try:
         data = json.loads(body)
         if not isinstance(data, dict):
             return data
 
         sanitized_data = {}
         for key, value in data.items():
-            if key in SENSITIVE_KEYS:
+            if key.lower() in SENSITIVE_KEYS:
                 sanitized_data[key] = "[REDACTED]"
             else:
                 sanitized_data[key] = value
         return sanitized_data
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        # For other content types or binary data
         return {"detail": "Non-JSON body, not logged"}
 
 
@@ -64,11 +96,15 @@ class LoggingMiddleware(BaseHTTPMiddleware):
 
         # To allow the request body to be read again by the endpoint
         async def receive():
-            return {"type": "http.request", "body": request_body_bytes}
+            return {
+                "type": "http.request",
+                "body": request_body_bytes,
+                "more_body": False,
+            }
 
-        request = Request(request.scope, receive)
+        modified_request = Request(request.scope, receive)
 
-        response = await call_next(request)
+        response = await call_next(modified_request)
 
         process_time = time.time() - start_time
 
@@ -77,7 +113,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
             "request": {
                 "method": request.method,
                 "path": request.url.path,
-                "body": sanitize_body(request_body_bytes),
+                "body": sanitize_body(request, request_body_bytes),
             },
             "response": {
                 "status_code": response.status_code,

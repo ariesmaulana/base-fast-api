@@ -14,4 +14,7 @@ dependencies = [
     "pytest-xdist==3.8.0",
     "pyjwt>=2.10.1",
     "ruff==0.6.5",
+    "boto3>=1.39.9",
+    "pydantic-settings>=2.10.1",
+    "isort>=6.0.1",
 ]
