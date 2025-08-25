@@ -50,6 +50,30 @@ The project is structured as follows:
 
 ## Setup
 
+### Option 1: Docker Setup (Recommended)
+
+1. **Build and run with Docker Compose:**
+   ```bash
+   docker compose up --build
+   ```
+
+   This will:
+   - Build the FastAPI application Docker image
+   - Start PostgreSQL database services (main and test)
+   - Start the FastAPI application on port 8000
+
+2. **Run tests with Docker:**
+   ```bash
+   docker compose exec web pytest -n auto
+   ```
+
+3. **Stop services:**
+   ```bash
+   docker compose down
+   ```
+
+### Option 2: Local Development Setup
+
 1.  Install dependencies:
     ```bash
     uv sync
@@ -184,4 +208,4 @@ Integration tests (`tests/test_routers.py`) verify the end-to-end flow through t
 - Add more basic functionality:
     - CRUD users
     - Authorization
-- Dockerize
+- ~~Dockerize~~ ✅

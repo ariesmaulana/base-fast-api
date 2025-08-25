@@ -10,57 +10,28 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    services:
-      postgres:
-        image: postgres:17
-        ports:
-          - 5432:5432
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: localdb123
-          POSTGRES_DB: test_db_1
-        options: >-
-          --health-cmd "pg_isready -U postgres -d test_db_1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    env:
-      DATABASE_URL: postgresql://postgres:localdb123@localhost:5432/base_fast
-      TEST_DATABASE_URL: postgresql://postgres:localdb123@localhost:5432/test_db_1
-      ENV: development
-      SECRET_KEY: somthing-that-already-secret
-      ALGORITHM: HS256
-      ACCESS_TOKEN_EXPIRE_MINUTES: 45
-      REFRESH_TOKEN_EXPIRE_MINUTES: 700
-      R2_ENDPOINT_URL: r2-url
-      R2_ACCESS_KEY_ID: xxxxx
-      R2_SECRET_ACCESS_KEY: xxxx
-      R2_BUCKET_NAME: bucketname
-      R2_PUBLIC_BASE_URL: base_url
-      R2_REGION: auto
-
-
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: 3.13
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Install uv
+      - name: Build Docker image
+        run: docker build -t base-fast-api .
+
+      - name: Start services with Docker Compose
+        run: docker compose up -d
+
+      - name: Wait for services to be healthy
         run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-
-      - name: Install dependencies with uv
-        run: uv sync
-
-      - name: Run ruff format check
-        run: uv run ruff format
+          echo "Waiting for PostgreSQL services to be ready..."
+          timeout 60 bash -c 'until docker compose exec -T postgres pg_isready -U postgres -d base_fast; do sleep 2; done'
+          timeout 60 bash -c 'until docker compose exec -T postgres_test pg_isready -U postgres -d test_db_1; do sleep 2; done'
 
       - name: Run tests
-        run: uv run pytest -n auto
+        run: docker compose exec -T web pytest -n auto
+
+      - name: Stop services
+        run: docker compose down
+        if: always()
