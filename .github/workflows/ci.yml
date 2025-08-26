@@ -30,7 +30,7 @@ jobs:
           timeout 60 bash -c 'until docker compose exec -T postgres_test pg_isready -U postgres -d test_db_1; do sleep 2; done'
 
       - name: Run tests
-        run: docker compose exec -T web pytest -n auto
+        run: docker compose exec -T web uv run pytest -n auto
 
       - name: Stop services
         run: docker compose down
