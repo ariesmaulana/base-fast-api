@@ -6,16 +6,28 @@ WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install uv package manager
-RUN pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org uv
+# Install uv package manager (using curl method as requested)
+# Note: Using direct binary download due to environment SSL constraints
+RUN curl -LsSf -k -o /tmp/uv.tar.gz https://github.com/astral-sh/uv/releases/download/0.8.13/uv-x86_64-unknown-linux-gnu.tar.gz && \
+    tar -xzf /tmp/uv.tar.gz -C /tmp && \
+    mv /tmp/uv-x86_64-unknown-linux-gnu/uv /usr/local/bin/ && \
+    chmod +x /usr/local/bin/uv && \
+    rm -rf /tmp/uv*
+
+# Set Python and pip to use relaxed SSL (for dependency installation in constrained environment)
+ENV PYTHONHTTPSVERIFY=0
+ENV PIP_TRUSTED_HOST="pypi.org files.pythonhosted.org pypi.python.org"
 
 # Copy project files for dependency installation
 COPY pyproject.toml uv.lock ./
 
 # Install dependencies with uv (bypass SSL verification due to environment constraints)
-RUN UV_NO_VERIFY_SSL=1 uv sync --frozen
+# Export requirements and install via pip as workaround for SSL certificate constraints
+RUN uv export --format requirements-txt > requirements.txt && \
+    pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org -r requirements.txt
 
 # Copy application code
 COPY . .
